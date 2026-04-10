@@ -905,97 +905,47 @@ local function UpdatePathVisuals()
     end
 end
 
-function TDS:Addons()
-    -- Пропускаем key-систему и Junkie SDK полностью
-    
-    -- GatlingConfig — таблица настроек
-    if not TDS.GatlingConfig then
-        TDS.GatlingConfig = {
-            Enabled = Globals.GatlingEnabled or false,
-            Multiply = Globals.GatlingMultiply or 10,
-            Cooldown = Globals.GatlingCooldown or 0.05,
-            CriticalRange = Globals.GatlingCriticalRange or 100
-        }
-    end
-
-    -- MultiMode — в оригинале функция, ставим заглушку
-    if not TDS.MultiMode then
-        TDS.MultiMode = function()
-            return true
-        end
-    end
-
-    -- Multiplayer — в оригинале функция, ставим заглушку
-    if not TDS.Multiplayer then
-        TDS.Multiplayer = function()
-            return true
-        end
-    end
-
-    -- Equip — экипировка башен
-    if not TDS.Equip then
-        function TDS:Equip(towerName)
-            if GameState ~= "GAME" then return end
-            local remote = ReplicatedStorage:WaitForChild("RemoteFunction")
-            local success, err = pcall(function()
-                remote:InvokeServer("Inventory", "Equip", "tower", tostring(towerName))
-            end)
-            return success
-        end
-    end
-
-    -- AutoGatling — автоматическая стрельба
-    if not TDS.AutoGatling then
-        function TDS:AutoGatling()
-            task.spawn(function()
-                local hooked = false
-                while true do
-                    if TDS.GatlingConfig and TDS.GatlingConfig.Enabled and not hooked then
-                        local ok = pcall(function()
-                            local ggchannel = require(
-                                game.ReplicatedStorage.Resources.Universal.NewNetwork
-                            ).Channel("GatlingGun")
-                            local gganim = require(
-                                game.ReplicatedStorage.Content.Tower["Gatling Gun"].Animator
-                            )
-
-                            gganim._fireGun = function(self)
-                                local cam = require(
-                                    game.ReplicatedStorage.Content.Tower["Gatling Gun"].Animator.CameraController
-                                )
-                                local pos = cam.result and cam.result.Position or cam.position
-                                local mult = TDS.GatlingConfig.Multiply or 10
-                                local cd = TDS.GatlingConfig.Cooldown or 0.05
-
-                                for i = 1, mult do
-                                    ggchannel:fireServer(
-                                        "Fire", 
-                                        pos, 
-                                        workspace:GetAttribute("Sync"), 
-                                        workspace:GetServerTimeNow()
-                                    )
-                                end
-
-                                self:Wait(cd)
-                            end
-                        end)
-
-                        if ok then
-                            hooked = true
-                        end
-                    end
-
-                    if not (TDS.GatlingConfig and TDS.GatlingConfig.Enabled) then
-                        hooked = false
-                    end
-
-                    task.wait(1)
+local function MissionsUIFix()
+    task.spawn(function()
+        while task.wait(1) do
+            pcall(function()
+                local MissionsScrollingFrame = game:GetService("Players").LocalPlayer.PlayerGui.ReactLobbyQuests.quests.missions.scrollingFrame
+                local MissionsListLayout = MissionsScrollingFrame.listLayout
+                local MissionFrame = MissionsScrollingFrame["1"]
+                if MissionFrame.AbsoluteSize.Y > 0 then
+                    local UIScaleRatio = MissionFrame.AbsoluteSize.Y / MissionFrame.Size.Y.Offset
+                    local CurrentCanvasSize = MissionsScrollingFrame.CanvasSize
+                    local CanvasHeight = (MissionsListLayout.AbsoluteContentSize.Y / UIScaleRatio) + 25
+                    MissionsScrollingFrame.CanvasSize = UDim2.new(CurrentCanvasSize.X.Scale, CurrentCanvasSize.X.Offset, CurrentCanvasSize.Y.Scale, CanvasHeight)
                 end
             end)
         end
+    end)
+end
+
+local PremiumLoaded = true
+
+function TDS:Addons()
+    if GameState == "LOBBY" then 
+        return false 
+    end
+    if PremiumLoaded then return true end
+    PremiumLoaded = true
+
+    local url = "https://api.jnkie.com/api/v1/luascripts/public/57fe397f76043ce06afad24f07528c9f93e97730930242f57134d0b60a2d250b/download"
+    local success, code = pcall(game.HttpGet, game, url)
+
+    if not success then
+        PremiumLoaded = false
+        return false
     end
 
-    -- Оборачиваем Equip чтобы работал только в игре
+    loadstring(code)()
+
+    while not (TDS.MultiMode and TDS.Multiplayer) do
+        task.wait(0.1)
+    end
+
     local OriginalEquip = TDS.Equip
     TDS.Equip = function(...)
         if GameState == "GAME" then
