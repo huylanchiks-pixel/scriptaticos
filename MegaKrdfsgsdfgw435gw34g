@@ -923,7 +923,7 @@ local function MissionsUIFix()
     end)
 end
 
-local PremiumLoaded = true
+local PremiumLoaded = false
 
 function TDS:Addons()
     if GameState == "LOBBY" then 
@@ -932,20 +932,35 @@ function TDS:Addons()
     if PremiumLoaded then return true end
     PremiumLoaded = true
 
-    local url = "https://api.jnkie.com/api/v1/luascripts/public/57fe397f76043ce06afad24f07528c9f93e97730930242f57134d0b60a2d250b/download"
-    local success, code = pcall(game.HttpGet, game, url)
-
-    if not success then
-        PremiumLoaded = false
-        return false
+    -- Пропускаем key-систему и Junkie SDK полностью
+    
+    -- MultiMode — в оригинале функция, ставим заглушку
+    if not TDS.MultiMode then
+        TDS.MultiMode = function()
+            return true
+        end
     end
 
-    loadstring(code)()
-
-    while not (TDS.MultiMode and TDS.Multiplayer) do
-        task.wait(0.1)
+    -- Multiplayer — в оригинале функция, ставим заглушку
+    if not TDS.Multiplayer then
+        TDS.Multiplayer = function()
+            return true
+        end
     end
 
+    -- Equip — экипировка башен
+    if not TDS.Equip then
+        function TDS:Equip(towerName)
+            if GameState ~= "GAME" then return end
+            local remote = ReplicatedStorage:WaitForChild("RemoteFunction")
+            local success, err = pcall(function()
+                remote:InvokeServer("Inventory", "Equip", "tower", tostring(towerName))
+            end)
+            return success
+        end
+    end
+
+    -- Оборачиваем Equip чтобы работал только в игре
     local OriginalEquip = TDS.Equip
     TDS.Equip = function(...)
         if GameState == "GAME" then
