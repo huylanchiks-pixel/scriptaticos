@@ -918,26 +918,21 @@ function TDS:Addons()
     if PremiumLoaded then return true end
     PremiumLoaded = true
 
-    -- Пропускаем HTTP запрос и loadstring, стабим нужные поля вручную
-
     if not TDS.MultiMode then
-        TDS.MultiMode = function()
-            return true
-        end
+        TDS.MultiMode = function() return true end
     end
 
     if not TDS.Multiplayer then
-        TDS.Multiplayer = function()
-            return true
-        end
+        TDS.Multiplayer = function() return true end
     end
 
-    -- TDS.Place тоже стабим, т.к. оригинал его ждал в while
     if not TDS.Place then
-        TDS.Place = function()
-            return true
-        end
+        TDS.Place = function() return true end
     end
+
+    -- обновляем алиасы
+    TDS["placed_towers"] = TDS.PlacedTowers
+    TDS["active_strat"] = TDS.ActiveStrat
 
     return true
 end
