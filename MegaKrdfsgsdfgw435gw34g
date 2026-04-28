@@ -3190,8 +3190,9 @@ end
 
 function TDS:Place(TName, px, py, pz, ...)
     local args = {...}
+    local isStack = args[#args] == "stack" or args[#args] == true
 
-    if args[#args] == "stack" or args[#args] == true then
+    if isStack then
         if not StackerErrorShown then
             StackerErrorShown = true
             Window:Notify({
@@ -3200,9 +3201,9 @@ function TDS:Place(TName, px, py, pz, ...)
                 Time = 3,
                 Type = "error"
             })
-            
             return false
         end
+        py = py + 25  -- вот это добавь
     end
 
     if GameState ~= "GAME" then
